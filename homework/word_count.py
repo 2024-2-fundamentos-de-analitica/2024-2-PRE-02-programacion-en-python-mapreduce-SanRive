@@ -2,11 +2,12 @@
 
 # pylint: disable=broad-exception-raised
 
+import string
 import fileinput
 import glob
 import os.path
 from itertools import groupby
-
+from pprint import pprint
 
 #
 # Escriba la función load_input que recive como parámetro un folder y retorna
@@ -24,7 +25,19 @@ from itertools import groupby
 #   ]
 #
 def load_input(input_directory):
-    """Funcion load_input"""
+    sequence = []
+    #Glob is used to read info from files | /* means all of the content on a folder/file
+    files = glob.glob(f"{input_directory}/*")
+    
+    # fileinput can read all that there's in given files
+    with fileinput.input(files=files) as f:
+        for line in f:
+            # filename lets you make the pair filename | line  |Preprocessing JIT
+            # sequence.append((fileinput.filename(), line.lower().replace(","," ").strip()))
+            sequence.append((fileinput.filename(), line))
+
+    return sequence
+        
 
 
 #
@@ -34,7 +47,12 @@ def load_input(input_directory):
 #
 def line_preprocessing(sequence):
     """Line Preprocessing"""
+    sequence = [
+        (key, value.translate(str.maketrans("", "", string.punctuation)).lower().strip())
+        for key, value in sequence
+    ]
 
+    return sequence
 
 #
 # Escriba una función llamada maper que recibe una lista de tuplas de la
@@ -50,7 +68,14 @@ def line_preprocessing(sequence):
 #
 def mapper(sequence):
     """Mapper"""
+    #Traditional way
+    # map = []
+    # for clave, valor in sequence:
+    #     for word in valor.split():
+    #         map.append((word, 1))
+    # print(map)
 
+    return ([(word, 1) for _ , value in sequence for word in value.split()])
 
 #
 # Escriba la función shuffle_and_sort que recibe la lista de tuplas entregada
@@ -65,17 +90,26 @@ def mapper(sequence):
 #
 def shuffle_and_sort(sequence):
     """Shuffle and Sort"""
+    # sequence = sorted(sequence)
+    sequence.sort() # No need for lambda x:x[0] since sort() automatically sorts by the first item on a tuple
+    return sequence
 
 
 #
 # Escriba la función reducer, la cual recibe el resultado de shuffle_and_sort y
 # reduce los valores asociados a cada clave sumandolos. Como resultado, por
 # ejemplo, la reducción indica cuantas veces aparece la palabra analytics en el
-# texto.
+# texto. (As a list)
 #
 def reducer(sequence):
     """Reducer"""
-
+    redux = {}
+    for word, count in sequence:
+        if word not in redux:
+            redux[word] = 1
+        else: 
+            redux[word] += 1
+    return list(redux.items())
 
 #
 # Escriba la función create_ouptput_directory que recibe un nombre de
@@ -83,6 +117,11 @@ def reducer(sequence):
 #
 def create_ouptput_directory(output_directory):
     """Create Output Directory"""
+    if os.path.exists(output_directory):
+        for file in glob.glob(f"{output_directory}/*"):
+            os.remove(file)        # deletes file one by one on a given folder 
+        os.rmdir(output_directory) # deletes a given folder 
+    os.makedirs(output_directory)  # Creates a given folder on the same address
 
 
 #
@@ -95,6 +134,9 @@ def create_ouptput_directory(output_directory):
 #
 def save_output(output_directory, sequence):
     """Save Output"""
+    with open(f"{output_directory}/part-00000", "w", encoding="utf-8") as f:
+        for key, value in sequence:
+            f.write(f"{key}\t{value}\n")
 
 
 #
@@ -103,6 +145,8 @@ def save_output(output_directory, sequence):
 #
 def create_marker(output_directory):
     """Create Marker"""
+    with open(f"{output_directory}/_SUCCESS", "w", encoding="utf-8") as f:
+        f.write("")
 
 
 #
@@ -110,10 +154,19 @@ def create_marker(output_directory):
 #
 def run_job(input_directory, output_directory):
     """Job"""
+    sequence = load_input(input_directory)
+    sequence = line_preprocessing(sequence)
+    sequence = mapper(sequence)
+    sequence = shuffle_and_sort(sequence)
+    sequence = reducer(sequence)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, sequence)
+    create_marker(output_directory)
+    # pprint(sequence)
 
 
 if __name__ == "__main__":
     run_job(
-        "input",
-        "output",
+        "files/input",
+        "files/output",
     )
